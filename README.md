@@ -28,8 +28,8 @@
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/shalom2552/instabrief-newsbot.git
-   cd newsBot
+   git clone https://github.com/shalom2552/InstaBriefBot.git
+   cd InstaBriefBot
    ```
 
 2. **Create and activate a virtual environment**
