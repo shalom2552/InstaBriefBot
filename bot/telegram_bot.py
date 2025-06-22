@@ -27,6 +27,8 @@ from bot.database import (
     remove_channel,
     get_stats_per_channel,
     get_recent_messages,
+    get_unsummarized_messages, 
+    update_last_summarized,
 )
 from bot.processor import extract_keywords, summarize
 
@@ -62,6 +64,7 @@ async def handle_start(message: Message):
             [KeyboardButton(text="/latest")],
             [KeyboardButton(text="/sync"), KeyboardButton(text="/stats")],
             [KeyboardButton(text="/add"), KeyboardButton(text="/remove")],
+            [KeyboardButton(text="/debug"), KeyboardButton(text="/help")],
         ],
         resize_keyboard=True
     )
@@ -216,7 +219,7 @@ async def handle_sync(message: Message):
             await status_msg.edit_text(final_text)
 
     except Exception as e:
-        await message.answer("❌ שגיאה בסנכרון.")
+        await message.answer(f"❌ שגיאה בסנכרון.\n{e}")
         logging.error(f"[{message.from_user.id}] ❌ שגיאה בסנכרון: {e}")
         
 @router.message(Command("latest"))
@@ -224,14 +227,32 @@ async def handle_latest(message: Message):
     if not check_access(message): return
     try:
         logging.info(f"[{message.from_user.id}] 📥 ביקש סיכום של העדכונים האחרונים.")
-        recent_messages = get_recent_messages(limit=50)
-        if not recent_messages:
-            await message.answer("לא נמצאו עדכונים אחרונים.")
+
+        user_id = message.from_user.id
+        channels = get_all_channels()
+
+        all_messages = []
+        latest_per_channel = {}
+
+        for channel in channels:
+            messages = get_unsummarized_messages(user_id, channel)
+            if messages:
+                all_messages.extend(messages)
+                latest_per_channel[channel] = max(m["id"] for m in messages)
+
+        if not all_messages:
+            await message.answer("לא נמצאו הודעות חדשות לסיכום.")
             return
-        summary = summarize("סכם לי את החדשות של ההודעות.", recent_messages)
+
+        summary = summarize("סכם לי את החדשות של ההודעות.", all_messages)
         await message.answer(f"🗞️ סיכום עדכונים אחרונים:\n\n{summary}")
+
+        # עדכן נקודת הסיכום האחרונה לכל ערוץ
+        for channel, last_id in latest_per_channel.items():
+            update_last_summarized(user_id, channel, last_id)
+
     except Exception as e:
-        await message.answer("❌ שגיאה בעת שליפת הסיכום.")
+        await message.answer(f"❌ שגיאה בעת שליפת הסיכום.\n{e}")
         logging.error(f"[{message.from_user.id}] ❌ שגיאה ב־/latest: {e}")
 
 @router.message(F.text)

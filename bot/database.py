@@ -29,6 +29,14 @@ def init_db():
             name TEXT PRIMARY KEY
         )
     """)
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS user_channel_updates (
+            user_id INTEGER,
+            channel TEXT,
+            last_message_id INTEGER,
+            PRIMARY KEY (user_id, channel)
+        )
+    """)    
     conn.commit()
     conn.close()
 
@@ -117,3 +125,37 @@ def get_recent_messages(limit=100):
     rows = c.fetchall()
     conn.close()
     return [{"date": row[0], "text": row[1]} for row in rows]
+
+def get_unsummarized_messages(user_id, channel):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+
+    # Get the last summarized message ID for the user in the specified channel
+    c.execute("""
+        SELECT last_message_id FROM user_channel_updates
+        WHERE user_id = ? AND channel = ?
+    """, (user_id, channel))
+    row = c.fetchone()
+    last_id = row[0] if row else 0
+
+    # get_last_fetched returns the last fetched message ID for the channel
+    c.execute("""
+        SELECT message_id, date, text FROM messages
+        WHERE channel = ? AND message_id > ?
+        ORDER BY message_id ASC
+    """, (channel, last_id))
+    rows = c.fetchall()
+    conn.close()
+    return [{"id": row[0], "date": row[1], "text": row[2]} for row in rows]
+
+def update_last_summarized(user_id, channel, message_id):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("""
+        INSERT INTO user_channel_updates (user_id, channel, last_message_id)
+        VALUES (?, ?, ?)
+        ON CONFLICT(user_id, channel)
+        DO UPDATE SET last_message_id = excluded.last_message_id
+    """, (user_id, channel, message_id))
+    conn.commit()
+    conn.close()
