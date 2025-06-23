@@ -126,7 +126,7 @@ def get_recent_messages(limit=100):
     conn.close()
     return [{"date": row[0], "text": row[1]} for row in rows]
 
-def get_unsummarized_messages(user_id, channel):
+def get_unsummarized_messages(user_id, channel, limit=10):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
 
@@ -143,7 +143,8 @@ def get_unsummarized_messages(user_id, channel):
         SELECT message_id, date, text FROM messages
         WHERE channel = ? AND message_id > ?
         ORDER BY message_id ASC
-    """, (channel, last_id))
+        LIMIT ?
+    """, (channel, last_id, limit))
     rows = c.fetchall()
     conn.close()
     return [{"id": row[0], "date": row[1], "text": row[2]} for row in rows]
