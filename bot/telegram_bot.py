@@ -62,6 +62,8 @@ async def handle_start(message: Message):
             [KeyboardButton(text="/latest")],
             [KeyboardButton(text="/sync"), KeyboardButton(text="/stats")],
             [KeyboardButton(text="/add"), KeyboardButton(text="/remove")],
+            [KeyboardButton(text="/stats"), KeyboardButton(text="/debug")],
+            [KeyboardButton(text="/help")],
         ],
         resize_keyboard=True
     )
